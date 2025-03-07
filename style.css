@@ -1,0 +1,159 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: #121212;
+    color: #fff;
+    line-height: 1.6;
+  }
+  
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background-color: #181818; /* Navbar plus foncée */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Ombre plus marquée */
+  }
+  
+  .logo img {
+    height: 40px;
+  }
+  
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 40px; /* Espacement harmonieux entre les éléments */
+    list-style-type: none; /* Retirer les puces */
+  }
+  
+  .nav-item {
+    position: relative;
+  }
+  
+  .nav-link {
+    color: white;
+    text-decoration: none;
+    font-size: 18px;
+    padding: 10px 15px;
+    transition: color 0.3s ease, transform 0.3s ease;
+  }
+  
+  .nav-link:hover {
+    color: #210eb6; /* Bleu électrique */
+    transform: scale(1.1); /* Effet léger d'agrandissement au survol */
+  }
+  
+  .dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 5px;
+    padding: 10px 0;
+    list-style-type: none;
+  }
+  
+  .nav-item:hover .dropdown {
+    display: block;
+  }
+  
+  .dropdown li a {
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    display: block;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  .dropdown li a:hover {
+    background-color: #333;
+    color: #210eb6; /* Bleu électrique */
+  }
+  
+  .subscribe-button {
+    background-color: #210eb6; /* Bleu électrique */
+    color: white;
+    padding: 12px 30px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-size: 16px;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+  }
+  
+  .subscribe-button:hover {
+    background-color: #b5b5b5; /* Variation de bleu électrique */
+    transform: scale(1.05);
+  }
+  .track-record {
+    background-color: #1f1f1f;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    margin: 20px;
+  }
+  
+  h2 {
+    color: #fff;
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  
+  .filters {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  
+  .filters input, .filters select, .filters button {
+    padding: 10px;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+  }
+  
+  .reset-btn {
+    background-color: #00ffcc;
+  }
+  
+  .record-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: white;
+  }
+  
+  .record-table th, .record-table td {
+    padding: 12px;
+    text-align: center;
+  }
+  
+  .record-table th {
+    background-color: #333;
+  }
+  
+  .record-table td {
+    background-color: #222;
+  }
+  
+  .record-table tr:nth-child(even) td {
+    background-color: #2a2a2a;
+  }
+  
+  .record-table tr:hover {
+    background-color: #333;
+  }
+  
+  .stats {
+    color: white;
+    margin-top: 20px;
+  }
+  
+  #performanceChart {
+    margin-top: 20px;
+  }

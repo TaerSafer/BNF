@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="FR-fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Trader</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">
+      <img src="Images/logo.webp" alt="Logo">
+    </div>
+    <ul class="nav-links">
+      <li class="nav-item">
+        <a href="#" class="nav-link">Organisation Trading</a>
+        <ul class="dropdown">
+          <li><a href="#">Notion</a></li>
+          <li><a href="#">Track Record</a></li>
+          <li><a href="#">Autre Outil</a></li>
+        </ul>
+      </li>
+      <li><a href="#" class="nav-link">Investissement</a></li>
+      <li><a href="#" class="subscribe-button">S'abonner</a></li>
+    </ul>
+  </nav>
+  <div class="track-record">
+    <h2>Track Record</h2>
+  
+    <!-- Filtres -->
+    <div class="filters">
+      <select id="filter-type">
+        <option value="">Tous les trades</option>
+        <option value="long">Long</option>
+        <option value="short">Short</option>
+      </select>
+  
+      <input type="date" id="startDate">
+      <input type="date" id="endDate">
+      <button onclick="filterByDate()">Filtrer par date</button>
+  
+      <input type="text" id="search" placeholder="Rechercher un trade...">
+      <button onclick="searchTrade()">Rechercher</button>
+      
+      <button class="reset-btn" onclick="resetFilters()">Réinitialiser</button>
+    </div>
+  
+    <!-- Table des trades -->
+    <table class="record-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Pair</th>
+          <th>Type</th>
+          <th>Taille du lot</th>
+          <th>Entrée</th>
+          <th>Sortie</th>
+          <th>Gain/Perte (pips)</th>
+          <th>Gain/Perte (%)</th>
+          <th>Commentaires</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Les lignes de données des trades vont ici -->
+      </tbody>
+    </table>
+  
+    <!-- Zone pour le graphique -->
+    <canvas id="performanceChart" width="400" height="200"></canvas>
+  
+    <!-- Statistiques -->
+    <div class="stats">
+      <p>Taux de réussite: <span id="success-rate">0%</span></p>
+      <p>Ratio de Sharpe: <span id="sharpe-ratio">0</span></p>
+    </div>
+  
+    <!-- Téléchargement -->
+    <button onclick="downloadCSV()">Télécharger en CSV</button>
+    <button onclick="downloadPDF()">Télécharger en PDF</button>
+  </div>
+<script src="script.js"></script>
+</body>
+</html>
