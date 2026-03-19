@@ -1,0 +1,63 @@
+{
+  "name": "O.R.I.O.N.",
+  "version": "0.1.0",
+  "institution": "RedRock Capital",
+  "risk": {
+    "max_portfolio_var": 0.02,
+    "max_single_position": 0.05,
+    "correlation_lookback_days": 252,
+    "var_confidence": 0.99,
+    "stress_test_scenarios": 1000,
+    "max_drawdown_threshold": 0.10,
+    "liquidity_buffer": 0.15,
+    "rebalance_threshold": 0.05
+  },
+  "macro": {
+    "cycle_detection_window": 60,
+    "regime_lookback_months": 36,
+    "leading_indicators_weight": 0.40,
+    "coincident_indicators_weight": 0.35,
+    "lagging_indicators_weight": 0.25,
+    "regime_change_sensitivity": 0.70
+  },
+  "allocation": {
+    "optimization_method": "regime_adaptive",
+    "risk_parity_target": true,
+    "min_asset_weight": 0.0,
+    "max_asset_weight": 0.30,
+    "turnover_penalty": 0.001,
+    "rebalance_frequency_days": 5,
+    "regime_adaptation_speed": 0.30
+  },
+  "data": {
+    "cache_directory": ".orion_cache",
+    "history_depth_years": 20,
+    "update_frequency_minutes": 15,
+    "supported_providers": ["yahoo", "fred", "ecb", "bis"]
+  },
+  "universe": {
+    "forex": [
+      "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF",
+      "AUD/USD", "USD/CAD", "NZD/USD", "EUR/GBP",
+      "EUR/JPY", "GBP/JPY"
+    ],
+    "equity": [
+      "SPX", "NDX", "DJIA", "DAX", "FTSE100",
+      "CAC40", "NIKKEI225", "HSI", "STOXX600"
+    ],
+    "fixed_income": [
+      "US10Y", "US2Y", "DE10Y", "JP10Y", "GB10Y",
+      "US30Y", "TIPS10Y"
+    ],
+    "commodity": [
+      "GOLD", "SILVER", "WTI", "BRENT", "NATGAS",
+      "COPPER", "WHEAT", "CORN"
+    ],
+    "crypto": [
+      "BTC/USD", "ETH/USD", "SOL/USD"
+    ],
+    "volatility": [
+      "VIX", "VSTOXX", "VDAX", "MOVE"
+    ]
+  }
+}

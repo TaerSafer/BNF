@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orion"
+version = "0.1.0"
+description = "O.R.I.O.N. — Optimized Rational Intelligence for Orchestrated Navigation | RedRock Capital"
+requires-python = ">=3.11"
+license = {text = "Proprietary — RedRock Capital"}
+authors = [
+    {name = "RedRock Capital"},
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+data = [
+    "yfinance>=0.2.0",
+    "fredapi>=0.5.0",
+    "requests>=2.31.0",
+]
+full = [
+    "orion[data]",
+    "numpy>=1.26.0",
+    "pandas>=2.1.0",
+    "scipy>=1.11.0",
+]
+dev = [
+    "orion[full]",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+orion = "orion.main:main"
+
+[tool.setuptools.packages.find]
+include = ["orion*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
