@@ -1,85 +1,260 @@
 <!DOCTYPE html>
-<html lang="FR-fr">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Site Trader</title>
+  <title>O.R.I.O.N. — RedRock Capital</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="Images/logo.webp">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
+
+  <!-- ═══ NAVBAR ═══ -->
   <nav class="navbar">
     <div class="logo">
-      <img src="Images/logo.webp" alt="Logo">
+      <img src="Images/logo.webp" alt="RedRock Capital">
+      <div class="logo-text">
+        <span class="logo-title">O.R.I.O.N.</span>
+        <span class="logo-sub">RedRock Capital</span>
+      </div>
     </div>
-    <ul class="nav-links">
-      <li class="nav-item">
-        <a href="#" class="nav-link">Organisation Trading</a>
-        <ul class="dropdown">
-          <li><a href="#">Notion</a></li>
-          <li><a href="#">Track Record</a></li>
-          <li><a href="#">Autre Outil</a></li>
-        </ul>
-      </li>
-      <li><a href="#" class="nav-link">Investissement</a></li>
-      <li><a href="#" class="subscribe-button">S'abonner</a></li>
-    </ul>
+    <div class="nav-center">
+      <button class="nav-tab active" data-page="dashboard">Dashboard</button>
+      <button class="nav-tab" data-page="markets">Marchés</button>
+      <button class="nav-tab" data-page="signals">Signaux</button>
+      <button class="nav-tab" data-page="risk">Risque</button>
+      <button class="nav-tab" data-page="trades">Trades</button>
+    </div>
+    <div class="nav-right">
+      <div class="system-status" id="systemStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">Connecté</span>
+      </div>
+      <div class="cycle-counter" id="cycleCounter">Cycle: 0</div>
+    </div>
   </nav>
-  <div class="track-record">
-    <h2>Track Record</h2>
-  
-    <!-- Filtres -->
-    <div class="filters">
-      <select id="filter-type">
-        <option value="">Tous les trades</option>
-        <option value="long">Long</option>
-        <option value="short">Short</option>
-      </select>
-  
-      <input type="date" id="startDate">
-      <input type="date" id="endDate">
-      <button onclick="filterByDate()">Filtrer par date</button>
-  
-      <input type="text" id="search" placeholder="Rechercher un trade...">
-      <button onclick="searchTrade()">Rechercher</button>
-      
-      <button class="reset-btn" onclick="resetFilters()">Réinitialiser</button>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <main class="content" id="page-dashboard">
+
+    <!-- Top Cards -->
+    <div class="top-cards">
+      <div class="card metric-card">
+        <div class="card-label">Valeur du Portefeuille</div>
+        <div class="card-value" id="portfolioValue">$100,000.00</div>
+        <div class="card-change positive" id="portfolioPnl">+$0.00</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">Cash Disponible</div>
+        <div class="card-value" id="cashValue">$100,000.00</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">Régime Macro</div>
+        <div class="card-value regime-badge" id="regimeBadge">—</div>
+        <div class="card-sub" id="regimeConfidence">Confiance: —</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">Volatilité Moyenne</div>
+        <div class="card-value" id="meanVol">—</div>
+        <div class="card-sub" id="volRegime">Régime: —</div>
+      </div>
     </div>
-  
-    <!-- Table des trades -->
-    <table class="record-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Pair</th>
-          <th>Type</th>
-          <th>Taille du lot</th>
-          <th>Entrée</th>
-          <th>Sortie</th>
-          <th>Gain/Perte (pips)</th>
-          <th>Gain/Perte (%)</th>
-          <th>Commentaires</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Les lignes de données des trades vont ici -->
-      </tbody>
-    </table>
-  
-    <!-- Zone pour le graphique -->
-    <canvas id="performanceChart" width="400" height="200"></canvas>
-  
-    <!-- Statistiques -->
-    <div class="stats">
-      <p>Taux de réussite: <span id="success-rate">0%</span></p>
-      <p>Ratio de Sharpe: <span id="sharpe-ratio">0</span></p>
+
+    <!-- Auto Trade Control -->
+    <div class="control-bar">
+      <div class="control-left">
+        <button class="btn btn-primary" id="btnAutoTrade" onclick="toggleAutoTrade()">
+          Activer le Trading Auto
+        </button>
+        <button class="btn btn-secondary" onclick="runSingleCycle()">Cycle Manuel</button>
+        <span class="auto-status" id="autoStatus">Mode: Observation</span>
+      </div>
+      <div class="control-right">
+        <span class="cycle-info" id="cycleTime">Dernier cycle: —</span>
+      </div>
     </div>
-  
-    <!-- Téléchargement -->
-    <button onclick="downloadCSV()">Télécharger en CSV</button>
-    <button onclick="downloadPDF()">Télécharger en PDF</button>
-  </div>
+
+    <!-- Main Grid -->
+    <div class="dashboard-grid">
+
+      <!-- Positions Ouvertes -->
+      <div class="card wide">
+        <div class="card-header">
+          <h3>Positions Ouvertes</h3>
+          <span class="badge" id="posCount">0</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Actif</th>
+                <th>Direction</th>
+                <th>Quantité</th>
+                <th>Entrée</th>
+                <th>Actuel</th>
+                <th>PnL</th>
+                <th>PnL %</th>
+                <th>SL</th>
+                <th>TP</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="positionsTable"></tbody>
+          </table>
+          <div class="empty-state" id="posEmpty">Aucune position ouverte</div>
+        </div>
+      </div>
+
+      <!-- Chart Performance -->
+      <div class="card">
+        <div class="card-header"><h3>Performance du Portefeuille</h3></div>
+        <canvas id="perfChart"></canvas>
+      </div>
+
+      <!-- Allocation Pie -->
+      <div class="card">
+        <div class="card-header"><h3>Allocation Cible</h3></div>
+        <canvas id="allocChart"></canvas>
+      </div>
+
+      <!-- Top Signaux -->
+      <div class="card">
+        <div class="card-header"><h3>Top Signaux Haussiers</h3></div>
+        <div id="topSignals" class="signal-list"></div>
+      </div>
+
+      <!-- Top Signaux Baissiers -->
+      <div class="card">
+        <div class="card-header"><h3>Top Signaux Baissiers</h3></div>
+        <div id="bottomSignals" class="signal-list"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ═══ PAGE MARCHÉS ═══ -->
+  <main class="content hidden" id="page-markets">
+    <div class="markets-grid" id="marketsGrid"></div>
+  </main>
+
+  <!-- ═══ PAGE SIGNAUX ═══ -->
+  <main class="content hidden" id="page-signals">
+    <div class="card full">
+      <div class="card-header"><h3>Signaux O.R.I.O.N.</h3></div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Actif</th>
+              <th>Signal</th>
+              <th>Score</th>
+              <th>Force</th>
+              <th>Confiance</th>
+              <th>Macro</th>
+              <th>Volatilité</th>
+              <th>Cycle</th>
+              <th>Risque</th>
+            </tr>
+          </thead>
+          <tbody id="signalsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══ PAGE RISQUE ═══ -->
+  <main class="content hidden" id="page-risk">
+    <div class="top-cards">
+      <div class="card metric-card">
+        <div class="card-label">VaR (99%)</div>
+        <div class="card-value" id="riskVar">—</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">CVaR</div>
+        <div class="card-value" id="riskCvar">—</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">Sharpe Ratio</div>
+        <div class="card-value" id="riskSharpe">—</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">Max Drawdown</div>
+        <div class="card-value" id="riskDrawdown">—</div>
+      </div>
+    </div>
+    <div class="dashboard-grid">
+      <div class="card wide">
+        <div class="card-header"><h3>Stress Tests</h3></div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr><th>Scénario</th><th>Impact (%)</th><th>Impact ($)</th><th>Survie</th></tr>
+            </thead>
+            <tbody id="stressTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Cycles Économiques</h3></div>
+        <div id="cycleInfo" class="cycle-display"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Matrice de Transition</h3></div>
+        <div id="transitionInfo" class="transition-display"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══ PAGE TRADES ═══ -->
+  <main class="content hidden" id="page-trades">
+    <div class="top-cards">
+      <div class="card metric-card">
+        <div class="card-label">Total Trades</div>
+        <div class="card-value" id="statTotalTrades">0</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">Win Rate</div>
+        <div class="card-value" id="statWinRate">0%</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">PnL Moyen</div>
+        <div class="card-value" id="statAvgPnl">$0</div>
+      </div>
+      <div class="card metric-card">
+        <div class="card-label">Profit Factor</div>
+        <div class="card-value" id="statProfitFactor">0</div>
+      </div>
+    </div>
+    <div class="card full">
+      <div class="card-header"><h3>Historique des Trades</h3></div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Actif</th>
+              <th>Direction</th>
+              <th>Entrée</th>
+              <th>Sortie</th>
+              <th>PnL</th>
+              <th>PnL %</th>
+              <th>Durée</th>
+            </tr>
+          </thead>
+          <tbody id="tradeHistoryTable"></tbody>
+        </table>
+        <div class="empty-state" id="tradesEmpty">Aucun trade clôturé</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="footer">
+    <span>O.R.I.O.N. v0.1.0 — RedRock Capital — Intelligence Systémique Intégrée</span>
+    <span id="footerTime"></span>
+  </footer>
+
 <script src="script.js"></script>
 </body>
 </html>
