@@ -16,6 +16,7 @@ let portfolioHistory = [];
 let lastData = null;
 let initialPrices = {};
 let reconnectAttempts = 0;
+let ibkrConnected = false;
 
 // ═══ INIT ═══
 document.addEventListener('DOMContentLoaded', () => {
@@ -128,6 +129,7 @@ function processUpdate(data) {
   if (data.allocation) updateAllocation(data.allocation);
   if (data.risk) updateRisk(data.risk);
   if (data.prices) updateMarkets(data.prices);
+  if (data.ibkr) updateIBKR(data.ibkr);
 
   autoTradeActive = data.execution?.auto_trade || false;
   updateAutoTradeUI();
@@ -549,4 +551,101 @@ function assetClassColor(cls) {
     'Autre': '#555570',
   };
   return colors[cls] || '#555570';
+}
+
+// ═══ IBKR ═══
+function updateIBKR(ibkr) {
+  if (!ibkr) return;
+
+  const card = document.getElementById('ibkrCard');
+  const statusText = document.getElementById('ibkrStatusText');
+  const account = document.getElementById('ibkrAccount');
+  const reconnect = document.getElementById('ibkrReconnect');
+  const toggle = document.getElementById('ibkrToggle');
+  const btn = document.getElementById('ibkrBtn');
+  const loader = document.getElementById('ibkrLoader');
+
+  const status = ibkr.status;
+  ibkrConnected = status === 'connected';
+
+  // Remove all state classes
+  card.classList.remove('connected', 'disconnected', 'connecting');
+
+  // Hide loader unless connecting
+  if (status !== 'connecting') {
+    loader.classList.add('hidden');
+  }
+
+  if (status === 'connected') {
+    card.classList.add('connected');
+    statusText.textContent = `Connecté — ${ibkr.account_id}`;
+    account.textContent = ibkr.account_id;
+    reconnect.textContent = '';
+    toggle.checked = true;
+    btn.textContent = 'Déconnecter';
+  } else if (status === 'connecting') {
+    card.classList.add('connecting');
+    statusText.textContent = 'Connexion en cours...';
+    account.textContent = '';
+    reconnect.textContent = '';
+    loader.classList.remove('hidden');
+  } else if (status === 'reconnecting') {
+    card.classList.add('disconnected');
+    statusText.textContent = ibkr.last_error || 'Déconnecté';
+    account.textContent = '';
+    toggle.checked = false;
+    btn.textContent = 'Connecter';
+    if (ibkr.reconnect_countdown > 0) {
+      reconnect.textContent = `Reconnexion dans ${ibkr.reconnect_countdown}s...`;
+    }
+  } else {
+    // disconnected or error
+    card.classList.add('disconnected');
+    statusText.textContent = ibkr.last_error || 'Déconnecté';
+    account.textContent = '';
+    reconnect.textContent = '';
+    toggle.checked = false;
+    btn.textContent = 'Connecter';
+  }
+}
+
+async function handleIBKRToggle(checkbox) {
+  if (checkbox.checked) {
+    await connectIBKR();
+  } else {
+    await disconnectIBKR();
+  }
+}
+
+async function handleIBKRButton() {
+  if (ibkrConnected) {
+    await disconnectIBKR();
+  } else {
+    await connectIBKR();
+  }
+}
+
+async function connectIBKR() {
+  const loader = document.getElementById('ibkrLoader');
+  const card = document.getElementById('ibkrCard');
+  const statusText = document.getElementById('ibkrStatusText');
+
+  // Show loading state
+  loader.classList.remove('hidden');
+  card.classList.remove('connected', 'disconnected');
+  card.classList.add('connecting');
+  statusText.textContent = 'Connexion en cours...';
+
+  const result = await apiCall('ibkr/connect', 'POST');
+  if (result) {
+    updateIBKR(result);
+  }
+  loader.classList.add('hidden');
+}
+
+async function disconnectIBKR() {
+  const result = await apiCall('ibkr/disconnect', 'POST');
+  if (result) {
+    updateIBKR(result);
+  }
 }

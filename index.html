@@ -61,6 +61,31 @@
       </div>
     </div>
 
+    <!-- IBKR Connection Card -->
+    <div class="ibkr-card disconnected" id="ibkrCard">
+      <div class="ibkr-left">
+        <div class="ibkr-icon">IBKR</div>
+        <div class="ibkr-info">
+          <div class="ibkr-title">Interactive Brokers</div>
+          <div class="ibkr-status-text" id="ibkrStatusText">Déconnecté</div>
+        </div>
+      </div>
+      <div class="ibkr-center">
+        <div class="ibkr-account" id="ibkrAccount"></div>
+        <div class="ibkr-reconnect" id="ibkrReconnect"></div>
+      </div>
+      <div class="ibkr-right">
+        <label class="toggle-switch">
+          <input type="checkbox" id="ibkrToggle" onchange="handleIBKRToggle(this)">
+          <span class="toggle-slider"></span>
+        </label>
+        <button class="btn btn-sm ibkr-btn" id="ibkrBtn" onclick="handleIBKRButton()">Connecter</button>
+      </div>
+      <div class="ibkr-loader hidden" id="ibkrLoader">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
     <!-- Auto Trade Control -->
     <div class="control-bar">
       <div class="control-left">

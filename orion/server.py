@@ -33,6 +33,7 @@ from orion.allocation.engine import AllocationEngine
 from orion.volatility.engine import VolatilityEngine
 from orion.volatility.models import VolatilityModel
 from orion.execution.engine import ExecutionEngine, OrderSide
+from orion.execution.broker import IBKRBroker
 from orion.signals.generator import SignalGenerator
 from orion.utils.logging import setup_logging
 
@@ -47,6 +48,7 @@ macro_engine: MacroEngine | None = None
 risk_engine: RiskEngine | None = None
 vol_engine: VolatilityEngine | None = None
 alloc_engine: AllocationEngine | None = None
+ibkr_broker: IBKRBroker | None = None
 
 connected_clients: list[WebSocket] = []
 auto_cycle_task: asyncio.Task | None = None
@@ -211,6 +213,7 @@ def _run_orion_cycle() -> dict[str, Any]:
         "signals": {sym: sig.to_dict() for sym, sig in signals.items()},
         "execution": execution.get_dashboard_data(),
         "new_orders": [o.to_dict() for o in new_orders + sl_tp_orders],
+        "ibkr": ibkr_broker.get_status() if ibkr_broker else None,
     }
 
 
@@ -272,6 +275,7 @@ async def lifespan(app: FastAPI):
     engine.register_engine(execution)
 
     signal_gen = SignalGenerator()
+    ibkr_broker = IBKRBroker(host="127.0.0.1", port=7497, client_id=1)
 
     engine.initialize()
     _init_simulated_prices(config)
@@ -440,6 +444,32 @@ async def set_capital(amount: float):
     return {"capital": amount}
 
 
+# ─── IBKR Broker ────────────────────────────────────────────────────────
+
+@app.get("/api/ibkr/status")
+async def ibkr_status():
+    """Statut de la connexion IBKR."""
+    if not ibkr_broker:
+        return {"status": "disconnected", "last_error": "Broker non initialisé"}
+    return ibkr_broker.get_status()
+
+
+@app.post("/api/ibkr/connect")
+async def ibkr_connect():
+    """Tente de connecter O.R.I.O.N. à TWS/Gateway."""
+    if not ibkr_broker:
+        return {"status": "error", "last_error": "Broker non initialisé"}
+    return ibkr_broker.connect()
+
+
+@app.post("/api/ibkr/disconnect")
+async def ibkr_disconnect():
+    """Déconnecte O.R.I.O.N. d'IBKR."""
+    if not ibkr_broker:
+        return {"status": "disconnected"}
+    return ibkr_broker.disconnect()
+
+
 # ─── WebSocket pour temps réel ──────────────────────────────────────────
 
 @app.websocket("/ws")
@@ -465,6 +495,10 @@ async def websocket_endpoint(ws: WebSocket):
                     symbol = msg.get("symbol", "")
                     price = simulated_prices.get(symbol, 0)
                     execution._close_position(symbol, price)
+                elif cmd == "ibkr_connect":
+                    ibkr_broker.connect()
+                elif cmd == "ibkr_disconnect":
+                    ibkr_broker.disconnect()
             except asyncio.TimeoutError:
                 pass
 
