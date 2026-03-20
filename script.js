@@ -634,6 +634,10 @@ function updateIBKRCard(connected, account, error) {
 function updateIBKR(ibkr) {
   if (!ibkr) return;
   updateIBKRCard(ibkr.connected, ibkr.account, ibkr.error);
+  // Si IBKR connecté avec un solde réel, mettre à jour le capital affiché
+  if (ibkr.connected && ibkr.balance_eur && ibkr.balance_eur > 0) {
+    document.getElementById('portfolioValue').textContent = '\u20ac' + Number(ibkr.balance_eur).toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
 }
 
 function startReconnectTimer() {

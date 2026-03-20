@@ -213,11 +213,23 @@ def _run_orion_cycle() -> dict[str, Any]:
         "signals": {sym: sig.to_dict() for sym, sig in signals.items()},
         "execution": execution.get_dashboard_data(),
         "new_orders": [o.to_dict() for o in new_orders + sl_tp_orders],
-        "ibkr": {
-            "connected": ibkr_broker.is_connected,
-            "account": ibkr_broker.state.account_id or "DUP485293",
-            "error": ibkr_broker.state.last_error or None,
-        } if ibkr_broker else {"connected": False, "account": None, "error": None},
+        "ibkr": _get_ibkr_data(),
+    }
+
+
+def _get_ibkr_data() -> dict[str, Any]:
+    """Récupère les données IBKR incluant le solde réel."""
+    if not ibkr_broker:
+        return {"connected": False, "account": None, "error": None, "balance_eur": None}
+    balance = ibkr_broker.get_account_balance() if ibkr_broker.is_connected else None
+    # Si IBKR connecté avec un vrai solde, mettre à jour le capital du portefeuille
+    if balance and balance > 0 and execution:
+        execution.set_capital(balance)
+    return {
+        "connected": ibkr_broker.is_connected,
+        "account": ibkr_broker.state.account_id or "DUP485293",
+        "error": ibkr_broker.state.last_error or None,
+        "balance_eur": balance,
     }
 
 
@@ -475,6 +487,24 @@ async def ibkr_disconnect():
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@app.get("/api/ibkr/balance")
+async def ibkr_balance():
+    """Solde réel du compte IBKR en euros (cache 15min)."""
+    try:
+        from orion.execution.broker import get_account_balance, get_ibkr_status
+        status = get_ibkr_status()
+        if not status.get("connected"):
+            return {"balance_eur": None, "error": "Non connecté à IBKR"}
+        balance = get_account_balance()
+        return {
+            "balance_eur": balance,
+            "account": status.get("account", "DUP485293"),
+            "currency": "EUR",
+        }
+    except Exception as e:
+        return {"balance_eur": None, "error": str(e)}
 
 
 @app.get("/api/ibkr/status")

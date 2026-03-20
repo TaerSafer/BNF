@@ -2,7 +2,7 @@
 
 from orion.execution.broker import (
     IBKRBroker, BrokerStatus,
-    connect, disconnect, get_ibkr_status, set_broker,
+    connect, disconnect, get_ibkr_status, set_broker, get_account_balance,
 )
 
 
@@ -75,3 +75,20 @@ class TestModuleLevelFunctions:
         disconnect()
         status = get_ibkr_status()
         assert status["connected"] is False
+
+    def test_get_account_balance_disconnected(self):
+        broker = IBKRBroker(port=19999)
+        broker.state.reconnect_enabled = False
+        set_broker(broker)
+        balance = get_account_balance()
+        assert balance == 0.0  # Pas connecté, pas de solde
+
+    def test_balance_cache(self):
+        broker = IBKRBroker(port=19999)
+        broker._cached_balance = 50000.0
+        assert broker.get_account_balance() == 50000.0
+
+    def test_balance_initial_zero(self):
+        broker = IBKRBroker()
+        assert broker._cached_balance is None
+        assert broker.get_account_balance() == 0.0

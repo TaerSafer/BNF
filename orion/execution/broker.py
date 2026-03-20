@@ -72,19 +72,62 @@ class IBKRBroker:
         self.state = IBKRState(host=host, port=port, client_id=client_id)
         self._reconnect_thread: threading.Thread | None = None
         self._stop_reconnect = threading.Event()
+        self._ib = None  # ib_insync.IB instance
+        self._cached_balance: float | None = None
+        self._balance_currency: str = "EUR"
+        self._last_balance_fetch: datetime | None = None
+        self._balance_refresh_seconds: int = 900  # 15 minutes
 
     def connect(self) -> dict[str, Any]:
         """
         Tente de se connecter à TWS/Gateway.
 
-        Vérifie d'abord si le port est accessible (TWS ouvert),
-        puis établit la connexion.
+        Utilise ib_insync si disponible pour une vraie connexion API,
+        sinon vérifie simplement si le port TCP est accessible.
         """
         self.state.status = BrokerStatus.CONNECTING
         self.state.last_error = ""
 
         try:
-            # Vérifier si TWS est accessible sur le port
+            # Tenter la connexion via ib_insync
+            try:
+                from ib_insync import IB
+                ib = IB()
+                ib.connect(
+                    self.state.host,
+                    self.state.port,
+                    clientId=self.state.client_id,
+                    timeout=5,
+                )
+                self._ib = ib
+
+                # Récupérer le vrai account ID
+                accounts = ib.managedAccounts()
+                self.state.account_id = accounts[0] if accounts else "DUP485293"
+
+                self.state.status = BrokerStatus.CONNECTED
+                self.state.last_connected = datetime.now(timezone.utc)
+                self.state.last_error = ""
+                self.state.reconnect_countdown = 0
+                self._stop_reconnect.set()
+
+                logger.info(
+                    "IBKR: Connecté via ib_insync à %s:%d — Compte: %s",
+                    self.state.host, self.state.port, self.state.account_id,
+                )
+
+                # Fetch le solde initial
+                self._fetch_balance()
+
+                return self.state.to_dict()
+
+            except ImportError:
+                logger.info("IBKR: ib_insync non installé, fallback TCP")
+            except Exception as ib_err:
+                logger.warning("IBKR: ib_insync échec (%s), fallback TCP", ib_err)
+                self._ib = None
+
+            # Fallback : vérifier si TWS est accessible via TCP
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(3)
             result = sock.connect_ex((self.state.host, self.state.port))
@@ -100,17 +143,16 @@ class IBKRBroker:
                 self._start_reconnect_timer()
                 return self.state.to_dict()
 
-            # TWS est accessible — connexion établie
-            # En production, ici on utiliserait ibapi.client.EClient.connect()
+            # TWS est accessible via TCP (sans ib_insync)
             self.state.status = BrokerStatus.CONNECTED
-            self.state.account_id = "DU" + str(abs(hash((self.state.host, self.state.port))) % 1000000)
+            self.state.account_id = "DUP485293"
             self.state.last_connected = datetime.now(timezone.utc)
             self.state.last_error = ""
             self.state.reconnect_countdown = 0
             self._stop_reconnect.set()
 
             logger.info(
-                "IBKR: Connecté à %s:%d — Compte: %s",
+                "IBKR: Connecté (TCP) à %s:%d — Compte: %s",
                 self.state.host, self.state.port, self.state.account_id,
             )
 
@@ -129,6 +171,14 @@ class IBKRBroker:
         if self._reconnect_thread and self._reconnect_thread.is_alive():
             self._reconnect_thread.join(timeout=2)
 
+        # Fermer la connexion ib_insync
+        if self._ib is not None:
+            try:
+                self._ib.disconnect()
+            except Exception:
+                pass
+            self._ib = None
+
         prev_status = self.state.status
         self.state.status = BrokerStatus.DISCONNECTED
         self.state.reconnect_countdown = 0
@@ -144,6 +194,70 @@ class IBKRBroker:
     @property
     def is_connected(self) -> bool:
         return self.state.status == BrokerStatus.CONNECTED
+
+    def get_account_balance(self) -> float:
+        """
+        Récupère le solde réel du compte IBKR en euros.
+
+        Utilise ib_insync reqAccountSummary() pour obtenir le NetLiquidation
+        du compte. Met en cache le résultat pour 15 minutes.
+        Retourne le dernier solde connu ou 0.0 si jamais connecté.
+        """
+        now = datetime.now(timezone.utc)
+
+        # Vérifier si le cache est encore valide
+        if (
+            self._cached_balance is not None
+            and self._last_balance_fetch is not None
+            and (now - self._last_balance_fetch).total_seconds() < self._balance_refresh_seconds
+        ):
+            return self._cached_balance
+
+        # Tenter de fetch le vrai solde
+        balance = self._fetch_balance()
+        return balance
+
+    def _fetch_balance(self) -> float:
+        """Fetch le solde via ib_insync. Met à jour le cache."""
+        if self._ib is None or not self.is_connected:
+            logger.debug("IBKR: Pas de connexion ib_insync, solde non disponible")
+            return self._cached_balance or 0.0
+
+        try:
+            # reqAccountSummary retourne les valeurs du compte
+            summary = self._ib.accountSummary(self.state.account_id)
+
+            balance_eur = 0.0
+            for item in summary:
+                # Chercher NetLiquidation en EUR
+                if item.tag == "NetLiquidation" and item.currency == "EUR":
+                    balance_eur = float(item.value)
+                    break
+                # Fallback : NetLiquidation dans n'importe quelle devise
+                if item.tag == "NetLiquidation" and item.currency == "BASE":
+                    balance_eur = float(item.value)
+
+            if balance_eur == 0.0:
+                # Essayer TotalCashBalance en EUR
+                for item in summary:
+                    if item.tag == "TotalCashBalance" and item.currency == "EUR":
+                        balance_eur = float(item.value)
+                        break
+
+            self._cached_balance = balance_eur
+            self._last_balance_fetch = datetime.now(timezone.utc)
+            self._balance_currency = "EUR"
+
+            logger.info(
+                "IBKR: Solde %s récupéré — %.2f %s",
+                self.state.account_id, balance_eur, self._balance_currency,
+            )
+
+            return balance_eur
+
+        except Exception as e:
+            logger.error("IBKR: Erreur récupération solde — %s", e)
+            return self._cached_balance or 0.0
 
     def _start_reconnect_timer(self) -> None:
         """Lance le timer de reconnexion automatique."""
@@ -203,3 +317,8 @@ def get_ibkr_status() -> dict[str, Any]:
         "account": broker.state.account_id or "DUP485293",
         "error": broker.state.last_error or None,
     }
+
+
+def get_account_balance() -> float:
+    """Récupère le solde réel du compte IBKR en euros via reqAccountSummary()."""
+    return _get_broker().get_account_balance()
