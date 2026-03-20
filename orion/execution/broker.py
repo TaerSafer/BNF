@@ -165,3 +165,41 @@ class IBKRBroker:
 
         self._reconnect_thread = threading.Thread(target=_countdown, daemon=True)
         self._reconnect_thread.start()
+
+
+# ─── Fonctions module-level pour import simplifié ───────────────────────
+
+_default_broker: IBKRBroker | None = None
+
+
+def _get_broker() -> IBKRBroker:
+    global _default_broker
+    if _default_broker is None:
+        _default_broker = IBKRBroker()
+    return _default_broker
+
+
+def set_broker(broker: IBKRBroker) -> None:
+    """Injecte une instance broker (appelé par le serveur au démarrage)."""
+    global _default_broker
+    _default_broker = broker
+
+
+def connect() -> None:
+    """Connecte le broker par défaut."""
+    _get_broker().connect()
+
+
+def disconnect() -> None:
+    """Déconnecte le broker par défaut."""
+    _get_broker().disconnect()
+
+
+def get_ibkr_status() -> dict[str, Any]:
+    """Retourne le statut dans le format simplifié {connected, account, error}."""
+    broker = _get_broker()
+    return {
+        "connected": broker.is_connected,
+        "account": broker.state.account_id or "DUP485293",
+        "error": broker.state.last_error or None,
+    }

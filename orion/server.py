@@ -33,7 +33,7 @@ from orion.allocation.engine import AllocationEngine
 from orion.volatility.engine import VolatilityEngine
 from orion.volatility.models import VolatilityModel
 from orion.execution.engine import ExecutionEngine, OrderSide
-from orion.execution.broker import IBKRBroker
+from orion.execution.broker import IBKRBroker, set_broker
 from orion.signals.generator import SignalGenerator
 from orion.utils.logging import setup_logging
 
@@ -213,7 +213,11 @@ def _run_orion_cycle() -> dict[str, Any]:
         "signals": {sym: sig.to_dict() for sym, sig in signals.items()},
         "execution": execution.get_dashboard_data(),
         "new_orders": [o.to_dict() for o in new_orders + sl_tp_orders],
-        "ibkr": ibkr_broker.get_status() if ibkr_broker else None,
+        "ibkr": {
+            "connected": ibkr_broker.is_connected,
+            "account": ibkr_broker.state.account_id or "DUP485293",
+            "error": ibkr_broker.state.last_error or None,
+        } if ibkr_broker else {"connected": False, "account": None, "error": None},
     }
 
 
@@ -276,6 +280,7 @@ async def lifespan(app: FastAPI):
 
     signal_gen = SignalGenerator()
     ibkr_broker = IBKRBroker(host="127.0.0.1", port=7497, client_id=1)
+    set_broker(ibkr_broker)
 
     engine.initialize()
     _init_simulated_prices(config)
@@ -446,28 +451,45 @@ async def set_capital(amount: float):
 
 # ─── IBKR Broker ────────────────────────────────────────────────────────
 
-@app.get("/api/ibkr/status")
-async def ibkr_status():
-    """Statut de la connexion IBKR."""
-    if not ibkr_broker:
-        return {"status": "disconnected", "last_error": "Broker non initialisé"}
-    return ibkr_broker.get_status()
-
-
 @app.post("/api/ibkr/connect")
 async def ibkr_connect():
-    """Tente de connecter O.R.I.O.N. à TWS/Gateway."""
-    if not ibkr_broker:
-        return {"status": "error", "last_error": "Broker non initialisé"}
-    return ibkr_broker.connect()
+    """Tente de connecter O.R.I.O.N. à TWS/Gateway port 7497."""
+    try:
+        from orion.execution.broker import connect, get_ibkr_status
+        connect()
+        status = get_ibkr_status()
+        if status.get("connected"):
+            return {"success": True, "account": status.get("account", "DUP485293")}
+        else:
+            return {"success": False, "error": status.get("error", "TWS non détecté — ouvrez TWS port 7497")}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 @app.post("/api/ibkr/disconnect")
 async def ibkr_disconnect():
     """Déconnecte O.R.I.O.N. d'IBKR."""
-    if not ibkr_broker:
-        return {"status": "disconnected"}
-    return ibkr_broker.disconnect()
+    try:
+        from orion.execution.broker import disconnect
+        disconnect()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/ibkr/status")
+async def ibkr_status():
+    """Statut actuel de la connexion IBKR."""
+    try:
+        from orion.execution.broker import get_ibkr_status
+        status = get_ibkr_status()
+        return {
+            "connected": status.get("connected", False),
+            "account": status.get("account", "DUP485293"),
+            "error": status.get("error", None),
+        }
+    except Exception as e:
+        return {"connected": False, "account": None, "error": str(e)}
 
 
 # ─── WebSocket pour temps réel ──────────────────────────────────────────

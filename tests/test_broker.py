@@ -1,6 +1,9 @@
 """Tests du broker IBKR d'O.R.I.O.N."""
 
-from orion.execution.broker import IBKRBroker, BrokerStatus
+from orion.execution.broker import (
+    IBKRBroker, BrokerStatus,
+    connect, disconnect, get_ibkr_status, set_broker,
+)
 
 
 class TestIBKRBroker:
@@ -49,3 +52,26 @@ class TestIBKRBroker:
         broker.disconnect()
         assert broker.state.reconnect_countdown == 0
         assert broker.state.status == BrokerStatus.DISCONNECTED
+
+
+class TestModuleLevelFunctions:
+    def test_set_broker_and_get_status(self):
+        broker = IBKRBroker(port=19999)
+        broker.state.reconnect_enabled = False
+        set_broker(broker)
+        status = get_ibkr_status()
+        assert "connected" in status
+        assert "account" in status
+        assert "error" in status
+        assert status["connected"] is False
+
+    def test_connect_disconnect_module(self):
+        broker = IBKRBroker(port=19999)
+        broker.state.reconnect_enabled = False
+        set_broker(broker)
+        connect()
+        status = get_ibkr_status()
+        assert status["connected"] is False  # Port fermé
+        disconnect()
+        status = get_ibkr_status()
+        assert status["connected"] is False

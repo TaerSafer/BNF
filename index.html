@@ -62,28 +62,22 @@
     </div>
 
     <!-- IBKR Connection Card -->
-    <div class="ibkr-card disconnected" id="ibkrCard">
-      <div class="ibkr-left">
-        <div class="ibkr-icon">IBKR</div>
-        <div class="ibkr-info">
-          <div class="ibkr-title">Interactive Brokers</div>
-          <div class="ibkr-status-text" id="ibkrStatusText">Déconnecté</div>
+    <div class="card metric-card" id="ibkr-card" style="border-color: var(--red);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span class="card-label" style="margin-bottom:0;">IBKR</span>
+        <div id="ibkr-toggle" onclick="toggleIBKR()" style="width:44px;height:24px;border-radius:12px;background:#3D4451;cursor:pointer;transition:background 0.3s;position:relative;display:flex;align-items:center;padding:2px;">
+          <div id="ibkr-toggle-knob" style="width:20px;height:20px;border-radius:50%;background:#fff;transition:transform 0.3s;transform:translateX(0px);"></div>
         </div>
       </div>
-      <div class="ibkr-center">
-        <div class="ibkr-account" id="ibkrAccount"></div>
-        <div class="ibkr-reconnect" id="ibkrReconnect"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;justify-content:center;">
+        <div id="ibkr-dot" style="width:8px;height:8px;border-radius:50%;background:#F87171;"></div>
+        <span id="ibkr-label" style="font-size:18px;font-weight:300;color:#F87171;">NON CONNECT&Eacute;</span>
       </div>
-      <div class="ibkr-right">
-        <label class="toggle-switch">
-          <input type="checkbox" id="ibkrToggle" onchange="handleIBKRToggle(this)">
-          <span class="toggle-slider"></span>
-        </label>
-        <button class="btn btn-sm ibkr-btn" id="ibkrBtn" onclick="handleIBKRButton()">Connecter</button>
-      </div>
-      <div class="ibkr-loader hidden" id="ibkrLoader">
-        <div class="spinner"></div>
-      </div>
+      <div id="ibkr-sublabel" style="font-size:11px;color:#6B7280;margin-bottom:12px;">Activez TWS sur le port 7497</div>
+      <div id="ibkr-spinner" style="display:none;font-size:11px;color:#E8C87A;margin-bottom:8px;">&#x27F3; Connexion en cours...</div>
+      <div id="ibkr-toast" style="display:none;font-size:11px;padding:4px 8px;border-radius:4px;margin-bottom:8px;"></div>
+      <button id="ibkr-btn" onclick="toggleIBKR()" style="width:100%;padding:8px;border-radius:4px;cursor:pointer;font-size:11px;letter-spacing:1px;font-family:inherit;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:#4ADE80;transition:all 0.2s;">CONNECTER</button>
+      <div id="ibkr-reconnect" style="display:none;font-size:10px;color:#3D4451;margin-top:6px;text-align:center;"></div>
     </div>
 
     <!-- Auto Trade Control -->

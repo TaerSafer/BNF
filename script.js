@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
   connectWebSocket();
   updateClock();
   setInterval(updateClock, 1000);
+  checkIBKRStatus();
+  setInterval(checkIBKRStatus, 30000);
 });
 
 // ═══ NAVIGATION ═══
@@ -554,98 +556,114 @@ function assetClassColor(cls) {
 }
 
 // ═══ IBKR ═══
-function updateIBKR(ibkr) {
-  if (!ibkr) return;
+let ibkrReconnectTimer = null;
+let ibkrReconnectCountdown = 300;
 
-  const card = document.getElementById('ibkrCard');
-  const statusText = document.getElementById('ibkrStatusText');
-  const account = document.getElementById('ibkrAccount');
-  const reconnect = document.getElementById('ibkrReconnect');
-  const toggle = document.getElementById('ibkrToggle');
-  const btn = document.getElementById('ibkrBtn');
-  const loader = document.getElementById('ibkrLoader');
-
-  const status = ibkr.status;
-  ibkrConnected = status === 'connected';
-
-  // Remove all state classes
-  card.classList.remove('connected', 'disconnected', 'connecting');
-
-  // Hide loader unless connecting
-  if (status !== 'connecting') {
-    loader.classList.add('hidden');
-  }
-
-  if (status === 'connected') {
-    card.classList.add('connected');
-    statusText.textContent = `Connecté — ${ibkr.account_id}`;
-    account.textContent = ibkr.account_id;
-    reconnect.textContent = '';
-    toggle.checked = true;
-    btn.textContent = 'Déconnecter';
-  } else if (status === 'connecting') {
-    card.classList.add('connecting');
-    statusText.textContent = 'Connexion en cours...';
-    account.textContent = '';
-    reconnect.textContent = '';
-    loader.classList.remove('hidden');
-  } else if (status === 'reconnecting') {
-    card.classList.add('disconnected');
-    statusText.textContent = ibkr.last_error || 'Déconnecté';
-    account.textContent = '';
-    toggle.checked = false;
-    btn.textContent = 'Connecter';
-    if (ibkr.reconnect_countdown > 0) {
-      reconnect.textContent = `Reconnexion dans ${ibkr.reconnect_countdown}s...`;
-    }
-  } else {
-    // disconnected or error
-    card.classList.add('disconnected');
-    statusText.textContent = ibkr.last_error || 'Déconnecté';
-    account.textContent = '';
-    reconnect.textContent = '';
-    toggle.checked = false;
-    btn.textContent = 'Connecter';
-  }
+async function checkIBKRStatus() {
+  try {
+    const res = await fetch('/api/ibkr/status');
+    const data = await res.json();
+    updateIBKRCard(data.connected, data.account, data.error);
+  } catch(e) { updateIBKRCard(false, null, 'Erreur réseau'); }
 }
 
-async function handleIBKRToggle(checkbox) {
-  if (checkbox.checked) {
-    await connectIBKR();
-  } else {
-    await disconnectIBKR();
-  }
-}
-
-async function handleIBKRButton() {
-  if (ibkrConnected) {
-    await disconnectIBKR();
-  } else {
-    await connectIBKR();
-  }
+async function toggleIBKR() {
+  if (ibkrConnected) { await disconnectIBKR(); } else { await connectIBKR(); }
 }
 
 async function connectIBKR() {
-  const loader = document.getElementById('ibkrLoader');
-  const card = document.getElementById('ibkrCard');
-  const statusText = document.getElementById('ibkrStatusText');
-
-  // Show loading state
-  loader.classList.remove('hidden');
-  card.classList.remove('connected', 'disconnected');
-  card.classList.add('connecting');
-  statusText.textContent = 'Connexion en cours...';
-
-  const result = await apiCall('ibkr/connect', 'POST');
-  if (result) {
-    updateIBKR(result);
+  document.getElementById('ibkr-spinner').style.display = 'block';
+  document.getElementById('ibkr-btn').disabled = true;
+  document.getElementById('ibkr-btn').textContent = 'CONNEXION...';
+  try {
+    const res = await fetch('/api/ibkr/connect', {method:'POST'});
+    const data = await res.json();
+    document.getElementById('ibkr-spinner').style.display = 'none';
+    document.getElementById('ibkr-btn').disabled = false;
+    if (data.success) {
+      updateIBKRCard(true, data.account, null);
+      showIBKRToast('\u2713 IBKR connect\u00e9 \u2014 ' + data.account, 'success');
+      stopReconnectTimer();
+    } else {
+      updateIBKRCard(false, null, data.error);
+      showIBKRToast('\u2717 ' + data.error, 'error');
+      startReconnectTimer();
+    }
+  } catch(e) {
+    document.getElementById('ibkr-spinner').style.display = 'none';
+    document.getElementById('ibkr-btn').disabled = false;
   }
-  loader.classList.add('hidden');
 }
 
 async function disconnectIBKR() {
-  const result = await apiCall('ibkr/disconnect', 'POST');
-  if (result) {
-    updateIBKR(result);
+  await fetch('/api/ibkr/disconnect', {method:'POST'});
+  updateIBKRCard(false, null, null);
+  showIBKRToast('IBKR d\u00e9connect\u00e9', 'info');
+  stopReconnectTimer();
+}
+
+function updateIBKRCard(connected, account, error) {
+  ibkrConnected = connected;
+  const toggle = document.getElementById('ibkr-toggle');
+  const knob = document.getElementById('ibkr-toggle-knob');
+  const dot = document.getElementById('ibkr-dot');
+  const label = document.getElementById('ibkr-label');
+  const sublabel = document.getElementById('ibkr-sublabel');
+  const btn = document.getElementById('ibkr-btn');
+  const card = document.getElementById('ibkr-card');
+  if (connected) {
+    toggle.style.background = '#E8C87A'; knob.style.transform = 'translateX(20px)';
+    dot.style.background = '#4ADE80'; dot.style.boxShadow = '0 0 6px rgba(74,222,128,0.5)';
+    label.textContent = 'CONNECT\u00c9'; label.style.color = '#4ADE80';
+    sublabel.textContent = account || 'DUP485293';
+    btn.textContent = 'D\u00c9CONNECTER'; btn.style.background = 'rgba(248,113,113,0.08)';
+    btn.style.borderColor = 'rgba(248,113,113,0.2)'; btn.style.color = '#F87171';
+    card.style.borderColor = 'var(--green)';
+    document.getElementById('ibkr-reconnect').style.display = 'none';
+  } else {
+    toggle.style.background = '#3D4451'; knob.style.transform = 'translateX(0px)';
+    dot.style.background = '#F87171'; dot.style.boxShadow = 'none';
+    label.textContent = 'NON CONNECT\u00c9'; label.style.color = '#F87171';
+    sublabel.textContent = error || 'Activez TWS sur le port 7497';
+    btn.textContent = 'CONNECTER'; btn.style.background = 'rgba(74,222,128,0.08)';
+    btn.style.borderColor = 'rgba(74,222,128,0.2)'; btn.style.color = '#4ADE80';
+    card.style.borderColor = 'var(--red)';
   }
+}
+
+function updateIBKR(ibkr) {
+  if (!ibkr) return;
+  updateIBKRCard(ibkr.connected, ibkr.account, ibkr.error);
+}
+
+function startReconnectTimer() {
+  stopReconnectTimer();
+  ibkrReconnectCountdown = 300;
+  const el = document.getElementById('ibkr-reconnect');
+  el.style.display = 'block';
+  ibkrReconnectTimer = setInterval(() => {
+    ibkrReconnectCountdown--;
+    const m = Math.floor(ibkrReconnectCountdown / 60);
+    const s = ibkrReconnectCountdown % 60;
+    el.textContent = 'Reconnexion dans ' + m + ':' + s.toString().padStart(2, '0');
+    if (ibkrReconnectCountdown <= 0) {
+      el.textContent = 'Tentative...';
+      connectIBKR();
+      ibkrReconnectCountdown = 300;
+    }
+  }, 1000);
+}
+
+function stopReconnectTimer() {
+  if (ibkrReconnectTimer) { clearInterval(ibkrReconnectTimer); ibkrReconnectTimer = null; }
+  document.getElementById('ibkr-reconnect').style.display = 'none';
+}
+
+function showIBKRToast(message, type) {
+  const t = document.getElementById('ibkr-toast');
+  t.style.display = 'block'; t.textContent = message;
+  t.style.background = type === 'success' ? 'rgba(74,222,128,0.1)' : type === 'error' ? 'rgba(248,113,113,0.1)' : 'rgba(232,200,122,0.1)';
+  t.style.color = type === 'success' ? '#4ADE80' : type === 'error' ? '#F87171' : '#E8C87A';
+  t.style.border = '1px solid ' + (type === 'success' ? 'rgba(74,222,128,0.2)' : type === 'error' ? 'rgba(248,113,113,0.2)' : 'rgba(232,200,122,0.2)');
+  setTimeout(() => { t.style.display = 'none'; }, 4000);
 }
